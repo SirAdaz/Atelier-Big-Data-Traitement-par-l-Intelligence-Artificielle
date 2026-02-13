@@ -22,8 +22,8 @@ MODEL_PATH = BASE_DIR / "model_chiffres.joblib"
 
 # Hyperparamètres
 IMG_SIZE = 28
-VALIDATION_SPLIT = 0.15
-MAX_SAMPLES = 30000  # Limite pour la mémoire (None = tout utiliser)
+VALIDATION_SPLIT = 0.20
+MAX_SAMPLES = None  # Limite pour la mémoire (None = tout utiliser)
 
 
 def charger_et_preparer_donnees():
@@ -80,7 +80,7 @@ def main():
         alpha=1e-4,
         batch_size=128,
         learning_rate="adaptive",
-        max_iter=20,
+        max_iter=50,
         random_state=42,
         early_stopping=True,
         validation_fraction=0.1,
