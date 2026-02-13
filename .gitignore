@@ -5,3 +5,5 @@ model_lettres.joblib
 model_chiffres.joblib
 model_classes.json
 confusion_matrix.png
+confusion_matrix_chiffres.png
+confusion_matrix_lettres.png

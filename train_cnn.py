@@ -25,6 +25,8 @@ LETTERS_DIR = BASE_DIR / "Handwritten letters.v1i.folder" / "train"
 MODEL_PATH = BASE_DIR / "model_chiffres_lettres.joblib"
 CLASSES_PATH = BASE_DIR / "model_classes.json"
 CONFUSION_MATRIX_PATH = BASE_DIR / "confusion_matrix.png"
+CONFUSION_MATRIX_CHIFFRES_PATH = BASE_DIR / "confusion_matrix_chiffres.png"
+CONFUSION_MATRIX_LETTRES_PATH = BASE_DIR / "confusion_matrix_lettres.png"
 
 # Ordre des classes : 0-9, A-Z, a-z (62 classes)
 CLASS_NAMES = (
@@ -163,18 +165,70 @@ def main():
     print(f"Modèle enregistré : {MODEL_PATH}")
     print(f"Classes enregistrées : {CLASSES_PATH}")
 
-    # Matrice de confusion
+    # Matrices de confusion
     y_pred = model.predict(x_val)
-    _, ax = plt.subplots(figsize=(14, 12))
-    ConfusionMatrixDisplay.from_predictions(
-        y_val, y_pred, ax=ax, colorbar=True, values_format="d",
-        display_labels=CLASS_NAMES,
-    )
-    ax.set_title("Matrice de confusion (chiffres + lettres, validation)")
-    plt.tight_layout()
-    plt.savefig(CONFUSION_MATRIX_PATH, dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"Matrice de confusion enregistrée : {CONFUSION_MATRIX_PATH}")
+
+    if uniquement_chiffres:
+        # Chiffres seuls : une seule matrice lisible
+        _, ax = plt.subplots(figsize=(8, 7))
+        ConfusionMatrixDisplay.from_predictions(
+            y_val, y_pred, ax=ax, colorbar=True, values_format="d",
+            display_labels=CLASS_NAMES[:10],
+        )
+        ax.set_title("Matrice de confusion – Chiffres (validation)")
+        plt.tight_layout()
+        plt.savefig(CONFUSION_MATRIX_PATH, dpi=150, bbox_inches="tight")
+        plt.close()
+        print(f"Matrice de confusion enregistrée : {CONFUSION_MATRIX_PATH}")
+    else:
+        # Chiffres + lettres : une matrice par bloc pour rester lisible
+        # 1) Chiffres : vrais chiffres (0-9) vs prédit (0-9 ou "lettre")
+        mask_chiffres = y_val < 10
+        if np.any(mask_chiffres):
+            y_val_c = y_val[mask_chiffres]
+            y_pred_c = np.where(y_pred[mask_chiffres] < 10, y_pred[mask_chiffres], 10)
+            labels_chiffres = [str(i) for i in range(10)] + ["lettre"]
+            _, ax = plt.subplots(figsize=(8, 7))
+            ConfusionMatrixDisplay.from_predictions(
+                y_val_c, y_pred_c, ax=ax, colorbar=True, values_format="d",
+                display_labels=labels_chiffres,
+            )
+            ax.set_title("Matrice de confusion – Chiffres (validation)\n(col. « lettre » = prédit comme une lettre)")
+            plt.tight_layout()
+            plt.savefig(CONFUSION_MATRIX_CHIFFRES_PATH, dpi=150, bbox_inches="tight")
+            plt.close()
+            print(f"Matrice confusion chiffres : {CONFUSION_MATRIX_CHIFFRES_PATH}")
+
+        # 2) Lettres : vrais lettres (10-61) vs prédit (10-61)
+        mask_lettres = y_val >= 10
+        if np.any(mask_lettres):
+            y_val_l = y_val[mask_lettres] - 10  # 0-51
+            y_pred_l = np.clip(y_pred[mask_lettres], 10, 61) - 10
+            labels_lettres = CLASS_NAMES[10:]
+            _, ax = plt.subplots(figsize=(14, 12))
+            ConfusionMatrixDisplay.from_predictions(
+                y_val_l, y_pred_l, ax=ax, colorbar=True, values_format="d",
+                display_labels=labels_lettres,
+            )
+            ax.set_title("Matrice de confusion – Lettres A-Z, a-z (validation)")
+            ax.tick_params(axis="both", labelsize=7)
+            plt.tight_layout()
+            plt.savefig(CONFUSION_MATRIX_LETTRES_PATH, dpi=150, bbox_inches="tight")
+            plt.close()
+            print(f"Matrice confusion lettres : {CONFUSION_MATRIX_LETTRES_PATH}")
+
+        # 3) Matrice globale 62x62 (compacte, pour référence)
+        _, ax = plt.subplots(figsize=(22, 20))
+        ConfusionMatrixDisplay.from_predictions(
+            y_val, y_pred, ax=ax, colorbar=True, values_format="d",
+            display_labels=CLASS_NAMES,
+        )
+        ax.set_title("Matrice de confusion – Toutes classes (validation)")
+        ax.tick_params(axis="both", labelsize=5)
+        plt.tight_layout()
+        plt.savefig(CONFUSION_MATRIX_PATH, dpi=120, bbox_inches="tight")
+        plt.close()
+        print(f"Matrice de confusion globale : {CONFUSION_MATRIX_PATH}")
 
 
 if __name__ == "__main__":
