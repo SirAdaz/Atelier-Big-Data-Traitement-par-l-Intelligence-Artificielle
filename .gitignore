@@ -1,5 +1,6 @@
 /archive
 /Handwritten letters.v1i.folder
+/images_lettres
 model_chiffres_lettres.joblib
 model_lettres.joblib
 model_chiffres.joblib
