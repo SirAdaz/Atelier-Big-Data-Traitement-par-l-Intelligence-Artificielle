@@ -80,7 +80,7 @@ def main():
         alpha=1e-4,
         batch_size=128,
         learning_rate="adaptive",
-        max_iter=50,
+        max_iter=45,
         random_state=42,
         early_stopping=True,
         validation_fraction=0.1,
