@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from PIL import Image
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 
@@ -19,6 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent
 ARCHIVE_DIR = BASE_DIR / "archive" / "numbers"
 CSV_PATH = BASE_DIR / "archive" / "numbers.csv"
 MODEL_PATH = BASE_DIR / "model_chiffres.joblib"
+CONFUSION_MATRIX_PATH = BASE_DIR / "confusion_matrix.png"
 
 # Hyperparamètres
 IMG_SIZE = 28
@@ -78,7 +81,7 @@ def main():
         activation="relu",
         solver="adam",
         alpha=1e-4,
-        batch_size=128,
+        batch_size=128,  # type: ignore[arg-type]
         learning_rate="adaptive",
         max_iter=45,
         random_state=42,
@@ -94,6 +97,18 @@ def main():
 
     joblib.dump(model, MODEL_PATH)
     print(f"Modèle enregistré : {MODEL_PATH}")
+
+    # Matrice de confusion sur l'ensemble de validation
+    y_pred = model.predict(x_val)
+    _, ax = plt.subplots(figsize=(10, 8))
+    ConfusionMatrixDisplay.from_predictions(
+        y_val, y_pred, ax=ax, colorbar=True, values_format="d"
+    )
+    ax.set_title("Matrice de confusion (ensemble de validation)")
+    plt.tight_layout()
+    plt.savefig(CONFUSION_MATRIX_PATH, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"Matrice de confusion enregistrée : {CONFUSION_MATRIX_PATH}")
 
 
 if __name__ == "__main__":
