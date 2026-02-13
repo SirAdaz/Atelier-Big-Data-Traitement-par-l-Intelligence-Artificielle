@@ -122,6 +122,11 @@ def main():
     print(f"Nombre d'échantillons : {len(df)}")
     print(f"Classes : {len(CLASS_NAMES)} (0-9, A-Z, a-z)")
 
+    # Chiffres seuls (0-9) -> 45 itérations ; chiffres + lettres (62 classes) -> plus d'itérations
+    uniquement_chiffres = df["label_id"].max() < 10
+    max_iter = 45 if uniquement_chiffres else 80
+    print(f"Mode : {'chiffres seuls' if uniquement_chiffres else 'chiffres + lettres'} (max_iter={max_iter})")
+
     df_train, df_val = train_test_split(
         df, test_size=VALIDATION_SPLIT, random_state=42, stratify=df["label_id"]
     )
@@ -140,7 +145,7 @@ def main():
         alpha=1e-4,
         batch_size=128,  # type: ignore[arg-type]
         learning_rate="adaptive",
-        max_iter=100,
+        max_iter=max_iter,
         random_state=42,
         early_stopping=True,
         validation_fraction=0.1,
