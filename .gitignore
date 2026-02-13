@@ -1,4 +1,7 @@
 /archive
 /Handwritten letters.v1i.folder
+model_chiffres_lettres.joblib
+model_lettres.joblib
 model_chiffres.joblib
+model_classes.json
 confusion_matrix.png
