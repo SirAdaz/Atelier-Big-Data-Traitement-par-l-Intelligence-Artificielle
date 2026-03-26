@@ -47,6 +47,11 @@ python predict_digit.py "Handwritten letters.v1i.folder/train/A"
 python predict_digit.py archive/numbers/chars74k_png/GoodImg/Sample5
 ```
 
+## lancer l'interface graphique
+```powershell
+flask run --debug --no-reload
+```
+
 Le script affiche, pour chaque image, le caract�re pr�dit et la confiance (ex. : `pr�dit : 'A' (confiance : 95.00 %)`).
 
 ## Structure du projet
