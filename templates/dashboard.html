@@ -42,8 +42,9 @@
           });
           button.innerText = "Training... (it will take a few minutes)";
 
+          const toast = createToast("Training model, please wait, this WILL take multiple minutes")
+
           try {
-            toast = createToast("Training model, please wait, this WILL take multiple minutes")
 
             const response = await fetch("/train", {
               method: "POST",
@@ -296,8 +297,8 @@
     <script>
       function renderModal(data) {
           let html = `<div style="margin-bottom:1rem; display:flex; gap:1rem;">
-            <button onclick="toggleAll(true)">Select all</button>
-            <button onclick="toggleAll(false)">Deselect all</button>
+            <button onclick="toggleAll(true)" style="background-color:green;">Select all</button>
+            <button onclick="toggleAll(false)" style="background-color:red;">Deselect all</button>
           </div>`;
 
           // Numbers section
@@ -306,10 +307,12 @@
             const groupId = `group__${group.replace("/", "__")}`;
             html += `
               <details open>
-                <summary style="display:flex; align-items:center; gap:1rem;">
+                <summary style="display:flex; align-items:center; justify-content:space-between; gap:1rem; padding-top: 1rem;">
                   <strong>${group}</strong>
-                  <button onclick="toggleGroup('${groupId}', true)">Select all</button>
-                  <button onclick="toggleGroup('${groupId}', false)">Deselect all</button>
+                  <div>
+                      <button onclick="toggleGroup('${groupId}', true)" style="background-color:green;">Select all</button>
+                      <button onclick="toggleGroup('${groupId}', false)" style="background-color:red;">Deselect all</button>
+                  </div>
                 </summary>
                 <div id="${groupId}" style="display:flex; flex-wrap:wrap; gap:0.5rem; padding:0.5rem 1rem;">`;
             for (const label of labels) {
@@ -326,8 +329,8 @@
           html += `
             <h3 style="margin-top:1rem; display:flex; align-items:center; gap:1rem;">
               Train
-              <button onclick="toggleGroup('${trainGroupId}', true)">Select all</button>
-              <button onclick="toggleGroup('${trainGroupId}', false)">Deselect all</button>
+              <button onclick="toggleGroup('${trainGroupId}', true)" style="background-color:green;">Select all</button>
+              <button onclick="toggleGroup('${trainGroupId}', false)" style="background-color:red;">Deselect all</button>
             </h3>
             <div id="${trainGroupId}" style="display:flex; flex-wrap:wrap; gap:0.5rem; padding:0.5rem 0;">`;
           for (const sample of data.train) {
