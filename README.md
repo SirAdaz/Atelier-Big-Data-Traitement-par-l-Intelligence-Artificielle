@@ -49,6 +49,11 @@ python predict_digit.py archive/numbers/chars74k_png/GoodImg/Sample5
 
 Le script affiche, pour chaque image, le caract�re pr�dit et la confiance (ex. : `pr�dit : 'A' (confiance : 95.00 %)`).
 
+## lancer l'interface graphique
+```powershell
+flask run --debug --no-reload
+```
+
 ## Structure du projet
 
 | Fichier / Dossier | R�le |

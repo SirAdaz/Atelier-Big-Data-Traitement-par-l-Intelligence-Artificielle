@@ -5,6 +5,7 @@ Utilise scikit-learn pour éviter les problèmes de DLL TensorFlow sur Windows.
 """
 import json
 import os
+from datetime import datetime
 from typing import cast
 
 import joblib
@@ -12,6 +13,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from PIL import Image
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
@@ -19,8 +22,8 @@ from sklearn.neural_network import MLPClassifier
 
 # Chemins
 BASE_DIR = Path(__file__).resolve().parent
-ARCHIVE_DIR = BASE_DIR / "archive" / "numbers"
-CSV_PATH = BASE_DIR / "archive" / "numbers.csv"
+ARCHIVE_DIR = BASE_DIR / "numbers"
+CSV_PATH = BASE_DIR / "numbers.csv"
 LETTERS_DIR = BASE_DIR / "Handwritten letters.v1i.folder" / "train"
 MODEL_PATH = BASE_DIR / "model_chiffres_lettres.joblib"
 CLASSES_PATH = BASE_DIR / "model_classes.json"
@@ -46,7 +49,7 @@ def _normalize_folder(name: str) -> str:
 # Hyperparamètres
 IMG_SIZE = 28
 VALIDATION_SPLIT = 0.20
-MAX_SAMPLES_ARCHIVE = 15000
+MAX_SAMPLES_ARCHIVE = 75000
 MAX_SAMPLES_LETTERS = 15000
 
 
@@ -158,6 +161,9 @@ def main():
 
     score = model.score(x_val, y_val)
     print(f"Précision sur la validation : {score:.4f}")
+    with open("dashboard_data/precision_history.csv", "a") as file:
+        day, hour = datetime.today().strftime('%Y-%m-%d %H:%M:%S').split(" ")
+        file.write(day+","+hour+","+str(score)+"\n")
 
     joblib.dump(model, MODEL_PATH)
     with open(CLASSES_PATH, "w", encoding="utf-8") as f:

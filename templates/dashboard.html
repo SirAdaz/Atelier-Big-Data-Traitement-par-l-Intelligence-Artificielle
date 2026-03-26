@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %} Image recognition tool {% endblock %}
+
+{% block body %}
+    <div class="dashboard">
+
+    <!-- History -->
+    <div class="card history">
+      <h2>Test History</h2>
+      <div id="historyList">
+        {% for item in history %}
+          <div class="history-item">[{{ item.date }} {{ item.hour }}] : {{ item.precision }}%</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Latest Result -->
+    <div class="card">
+      <h2>Latest Result</h2>
+      <div class="result-box" id="latestResult">
+        {% if latest %}
+          [{{ latest.date }} {{ latest.hour }}] : {{ latest.precision }}%
+          {% if latest_diff > 0 %}
+            <div style="color : green; padding-left:0.5rem;"> + {{latest_diff}} pts</div>
+          {% else %}
+              <div style="color : red; padding-left:0.5rem;"> {{latest_diff}} pts</div>
+          {% endif %}
+        {% else %}
+          No result yet
+        {% endif %}
+      </div>
+      <div class="controls">
+        <button onclick="train(this)">Train the model (it will take a few minutes)</button>
+      </div>
+    </div>
+
+     <script>
+      async function train(button) {
+          document.querySelectorAll("button").forEach(btn => {
+              btn.disabled = true;
+          });
+          button.innerText = "Training... (it will take a few minutes)";
+
+          const toast = createToast("Training model, please wait, this WILL take multiple minutes")
+
+          try {
+
+            const response = await fetch("/train", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+            });
+
+            const data = await response.json();
+
+            alert(data.message)
+          } catch (err) {
+            console.error(err);
+            alert("Error while training the model");
+          } finally {
+            toast.remove()
+            document.querySelectorAll("button").forEach(btn => {
+              btn.disabled = false;
+            });
+            button.innerText = "Train the A.I. model";
+          }
+      }
+
+    </script>
+
+    <!-- Noisy Image Controls -->
+    <div class="card">
+      <h2>Noisy Image Controls</h2>
+      <div class="controls">
+        <button onclick="make_some_noise()">Generate noisy images</button>
+        <button onclick="silence(this, 'numbers')">Clean the numbers folder</button>
+        <button onclick="silence(this, 'train')">Clean the train folder</button>
+        <button onclick="silence(this, 'csv')">Clean NUMBERS.CSV of noisy images</button>
+      </div>
+    </div>
+
+    <!-- Noise Mask -->
+    <div class="card">
+      <h2>Noise Mask</h2>
+
+      <div class="controls">
+        <label>
+          Intensity: <span id="val">{{ intensity or 50 }}</span>
+        </label>
+
+        <input type="range"
+               id="intensitySlider"
+               min="0"
+               max="100"
+               value="{{ intensity or 50 }}"
+               oninput="document.getElementById('val').innerText=this.value">
+
+        <button onclick="regenerateMask(this)">Regenerate Mask</button>
+      </div>
+
+      <div class="image-preview" id="maskContainer">
+        {% if mask_images %}
+          {% for img in mask_images %}
+            <img src="{{ url_for('static', filename=img) }}" alt="current noise mask" height="128">
+          {% endfor %}
+        {% else %}
+          No mask generated
+        {% endif %}
+      </div>
+    </div>
+
+    <script>
+      async function regenerateMask(button) {
+          button.disabled = true;
+          button.innerText = "Generating...";
+
+          try {
+            const intensity = document.getElementById("intensitySlider").value;
+
+            const response = await fetch("/regenerate-mask", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ intensity: intensity })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              const container = document.getElementById("maskContainer");
+              container.innerHTML = "";
+
+              data.images.forEach(img => {
+                const image = document.createElement("img");
+                image.src = "/static/" + img + "?t=" + new Date().getTime();
+                image.height = 128;
+                container.appendChild(image);
+              });
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Error generating mask");
+          }
+
+          button.disabled = false;
+          button.innerText = "Regenerate Mask";
+        }
+
+        async function make_some_noise() {
+            document.getElementById("noiseModal").style.display = "block";
+            document.getElementById("modalContent").innerHTML = "Loading...";
+
+            const response = await fetch("/get-folders");
+            const data = await response.json();
+            renderModal(data);
+        }
+
+        async function silence(button, mode) {
+          document.querySelectorAll("button").forEach(btn => {
+            btn.disabled = true;
+          });
+
+          const toast = createToast("cleaning noisy images, please wait...")
+
+          try {
+
+            const response = await fetch("/silence", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ mode: mode })
+            });
+
+            const data = await response.json();
+
+            alert(data.message)
+          } catch (err) {
+            console.error(err);
+            alert("Error cleaning data");
+          } finally {
+              toast.remove();  // always runs
+              document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+            }
+           window.location.reload()
+        }
+
+        function createToast(message) {
+            // Create toast element
+              const toast = document.createElement("div");
+              toast.id = "noise-toast";
+              toast.innerHTML = `<div class="loading"></div><span>${message}</span>`;
+
+          document.body.appendChild(toast);
+          return toast
+        }
+
+    </script>
+
+    <!-- Prediction -->
+    <div class="card">
+      <h2>Prediction</h2>
+      <div class="controls">
+        <label for="predictionInput" style="cursor:pointer;">
+          <span style="padding:0.4rem 0.8rem; border:1px solid #aaa; border-radius:4px;">Choose an image</span>
+        </label>
+        <input type="file" id="predictionInput" accept=".png,.jpg,.jpeg,.bmp" style="display:none" onchange="onImageSelected(event)">
+        <button onclick="submitPrediction(this)" id="predictBtn" disabled>Predict</button>
+      </div>
+
+      <div style="display:flex; align-items:flex-start; gap:1.5rem; margin-top:1rem; flex-wrap:wrap;">
+        <img id="predictionPreview" style="display:none; height:140px; border-radius:4px;" alt="preview"/>
+        <div id="predictionResult" style="display:none;">
+          <div style="font-size:0.85rem; opacity:0.7; margin-bottom:0.25rem;">Predicted character</div>
+          <div id="predictionLabel" style="font-size:3rem; font-weight:bold;"></div>
+          <div id="predictionConfidence" style="font-size:0.85rem; opacity:0.7;"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+        function onImageSelected(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const preview = document.getElementById("predictionPreview");
+          preview.src = URL.createObjectURL(file);
+          preview.style.display = "block";
+
+          document.getElementById("predictBtn").disabled = false;
+          document.getElementById("predictionResult").style.display = "none";
+        }
+
+        async function submitPrediction(button) {
+          const file = document.getElementById("predictionInput").files[0];
+          if (!file) return;
+
+          document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+          const toast = createToast("Running prediction, please wait...");
+
+          // Convert to base64
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(",")[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+
+          try {
+            const response = await fetch("/predict", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                image: base64,
+                filename: file.name
+              })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              document.getElementById("predictionLabel").innerText = data.prediction;
+              document.getElementById("predictionConfidence").innerText =
+                `Confidence : ${(data.confidence * 100).toFixed(1)}%`;
+              document.getElementById("predictionResult").style.display = "block";
+            } else {
+              alert("Prediction failed : " + data.message);
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Error while predicting");
+          } finally {
+            toast.remove();
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+            document.getElementById("predictBtn").disabled =
+              document.getElementById("predictionInput").files.length === 0;
+          }
+        }
+    </script>
+
+
+    <!-- Modal -->
+    <div id="noiseModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+      <div style="background:#333; color:white; margin:5% auto; padding:2rem; max-width:700px; border-radius:8px;">
+        <h2>Select folders to noisify</h2>
+        <div id="modalContent">Loading...</div>
+        <div style="margin-top:1.5rem; display:flex; gap:1rem;">
+          <button onclick="submitNoise()">Generate</button>
+          <button onclick="closeModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function renderModal(data) {
+          let html = `<div style="margin-bottom:1rem; display:flex; gap:1rem;">
+            <button onclick="toggleAll(true)" style="background-color:green;">Select all</button>
+            <button onclick="toggleAll(false)" style="background-color:red;">Deselect all</button>
+          </div>`;
+
+          // Numbers section
+          html += `<h3>Numbers</h3>`;
+          for (const [group, labels] of Object.entries(data.numbers)) {
+            const groupId = `group__${group.replace("/", "__")}`;
+            html += `
+              <details open>
+                <summary style="display:flex; align-items:center; justify-content:space-between; gap:1rem; padding-top: 1rem;">
+                  <strong>${group}</strong>
+                  <div>
+                      <button onclick="toggleGroup('${groupId}', true)" style="background-color:green;">Select all</button>
+                      <button onclick="toggleGroup('${groupId}', false)" style="background-color:red;">Deselect all</button>
+                  </div>
+                </summary>
+                <div id="${groupId}" style="display:flex; flex-wrap:wrap; gap:0.5rem; padding:0.5rem 1rem;">`;
+            for (const label of labels) {
+              html += `<label style="min-width:80px">
+                <input type="checkbox" class="folder-check" value="${group}/${label}" data-type="numbers" checked>
+                ${label}
+              </label>`;
+            }
+            html += `</div></details>`;
+          }
+
+          // Train section
+          const trainGroupId = "group__train";
+          html += `
+            <h3 style="margin-top:1rem; display:flex; align-items:center; gap:1rem;">
+              Train
+              <button onclick="toggleGroup('${trainGroupId}', true)" style="background-color:green;">Select all</button>
+              <button onclick="toggleGroup('${trainGroupId}', false)" style="background-color:red;">Deselect all</button>
+            </h3>
+            <div id="${trainGroupId}" style="display:flex; flex-wrap:wrap; gap:0.5rem; padding:0.5rem 0;">`;
+          for (const sample of data.train) {
+            html += `<label style="min-width:80px">
+              <input type="checkbox" class="folder-check" value="${sample}" data-type="train" checked>
+              ${sample}
+            </label>`;
+          }
+          html += `</div>`;
+
+          document.getElementById("modalContent").innerHTML = html;
+        }
+
+        function toggleGroup(groupId, state) {
+          document.querySelectorAll(`#${groupId} .folder-check`).forEach(cb => cb.checked = state);
+        }
+
+      function toggleAll(state) {
+        document.querySelectorAll(".folder-check").forEach(cb => cb.checked = state);
+      }
+
+      function closeModal() {
+        document.getElementById("noiseModal").style.display = "none";
+      }
+
+      async function submitNoise() {
+        const selected = Array.from(document.querySelectorAll(".folder-check:checked"))
+          .map(cb => cb.value);
+
+        closeModal();
+
+        const toast = document.createElement("div");
+        toast.id = "noise-toast";
+        toast.innerHTML = `<div class="loading"></div><span>Creating noisy images, please wait...</span>`;
+        document.body.appendChild(toast);
+        document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+
+        try {
+          const response = await fetch("/make_some_noise", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ selected })
+          });
+          const data = await response.json();
+          alert(data.message);
+        } catch (err) {
+          console.error(err);
+          alert("Error generating noisy images");
+        } finally {
+          toast.remove();
+          document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+          window.location.reload();
+        }
+      }
+</script>
+
+  </div>
+{% endblock %}
